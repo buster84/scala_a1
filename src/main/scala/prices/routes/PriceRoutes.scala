@@ -14,7 +14,7 @@ import org.log4s.getLogger
 
 import scala.util.control.NoStackTrace
 
-final case class InstanceKindRoutes[F[_]: Sync](instanceKindService: PriceService[F]) extends Http4sDsl[F] {
+final case class PriceRoutes[F[_]: Sync](priceService: PriceService[F]) extends Http4sDsl[F] {
   val logger = getLogger
   val instanceKindsPath = "/instance-kinds"
   val pricePath = "/prices"
@@ -25,14 +25,14 @@ final case class InstanceKindRoutes[F[_]: Sync](instanceKindService: PriceServic
 
   private val getInstanceKinds: HttpRoutes[F] = HttpRoutes.of {
     case GET -> Root =>
-      instanceKindService.getAllInstanceKinds()
+      priceService.getAllInstanceKinds()
         .flatMap(kinds => Ok(kinds.map(k => InstanceKindResponse(k))))
   }
 
   case class InvalidKindQuery(message: String) extends NoStackTrace
 
   private def validateKinds(kinds: List[InstanceKind]): F[Either[Throwable, List[InstanceKind]]] = {
-    instanceKindService.getAllInstanceKinds().map { allKinds =>
+    priceService.getAllInstanceKinds().map { allKinds =>
       val allKindsSet = allKinds.toSet
 
       if (kinds.forall(p => allKindsSet.contains(p))) {
@@ -46,7 +46,7 @@ final case class InstanceKindRoutes[F[_]: Sync](instanceKindService: PriceServic
   private val getPrices: HttpRoutes[F] = HttpRoutes.of {
     case GET -> Root :? KindQueryParamMatcher(maybeKinds) =>
       val kinds: F[Either[Throwable, List[InstanceKind]]] = maybeKinds match {
-        case None => instanceKindService.getAllInstanceKinds().map(Right(_))
+        case None => priceService.getAllInstanceKinds().map(Right(_))
         case Some(kinds) => validateKinds(kinds)
       }
       kinds
@@ -55,7 +55,7 @@ final case class InstanceKindRoutes[F[_]: Sync](instanceKindService: PriceServic
             BadRequest(ErrorResponse("InvalidRequest", "Bad request"))
           }
           case Right(k) => {
-            instanceKindService.getAllPrices(k)
+            priceService.getAllPrices(k)
               .flatMap(instances => Ok(instances.map(i => InstanceResponse(i))))
           }
         }

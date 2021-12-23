@@ -7,7 +7,7 @@ import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.server.middleware.Logger
 
 import prices.config.Config
-import prices.routes.InstanceKindRoutes
+import prices.routes.PriceRoutes
 import prices.services.SmartcloudPriceService
 
 object Server {
@@ -22,7 +22,7 @@ object Server {
     )
 
     val httpApp = (
-      InstanceKindRoutes[IO](instanceKindService).routes
+      PriceRoutes[IO](instanceKindService).routes
     ).orNotFound
 
     Stream
