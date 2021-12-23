@@ -2,7 +2,6 @@ package prices.routes.protocol
 
 import io.circe._
 import io.circe.syntax._
-import prices.data._
 
 final case class ErrorResponse(code: String, message: String)
 object ErrorResponse {
