@@ -1,41 +1,68 @@
 # Smartcloud instance prices API
 
-**Important: Do NOT fork this repository if you want to submit a solution.**
-
-Imagine we run our infrastructure on a fictional cloud provider, Smartcloud. As their machine instance prices fluctuate all the time, Smartcloud provides an API for us to retrieve their prices in real time. This helps us in managing our cost.
-
-# Requirements
-
-Implement an API for fetching and returning machine instance prices from Smartcloud.
-
+## How to run
+### Prerequisites
+* Java (>=8)
+* sbt
+### Run
+* Run the server. Http port can be changed by [config](src/main/resources/application.conf)
+```bash
+sbt run
 ```
-GET /prices?kind=sc2-micro
-{"kind":"sc2-micro","amount":0.42}, ... (omitted)
+The API should be running on your port 8080 for default.
+
+## API endpoints
+### Instance kinds
+* **URL**: GET /instance-kinds
+* **Success Response**:
+```aidl
+[
+    {
+        "kind": "sc2-micro"
+    },
+    {
+        "kind": "sc2-small"
+    },
+... (ommitted)
+    {
+        "kind": "sc2-hicpu-32"
+    }
+]
+```
+### Prices
+Return prices of all instances. If `kind` is specified, the prices of the given instance kinds are returned.
+* **URL**: GET /prices
+* **Parameters**:
+  * Optional:
+    * kind=[string] : The value is one or multiple instance kinds. For multiple instance kinds, you can specify multiple instance kinds by comma separation. 
+    For example, `/prices?kind=sc2-hicpu-32,sc2-small,sc2-micro`
+* **Success Response**:
+```aidl
+[
+    {
+        "kind": "sc2-micro",
+        "price": 0.301
+    },
+    {
+        "kind": "sc2-small",
+        "price": 0.561
+    },
+... (ommited)
+    {
+        "kind": "sc2-hicpu-32",
+        "price": 0.925
+    }
+]
 ```
 
-This project scaffold provides an end-to-end implementation of an API endpoint which returns some dummy data. You should try to follow the same code structure.
+## Assumption and design
+### Assumption
+* `/prices` should return multiple prices. It is not clear by the requirements but returning one prices is subset of multiple one so I hope this is fine.
+* 500 error of the smartcloud can be fixed in next 3 times calling the api.
 
-You should implement `SmartcloudPriceService` to call the [smartcloud](https://hub.docker.com/r/smartpayco/smartcloud) endpoint and return the price data. Note that the smartcloud service has usage quota and may return error occassionally to simulate unexpected errors. Please make sure your service is able to handle the constraint and errors gracefully.
-
-You should also include a README file to document:-
-1. Any assumptions you make
-1. Any design decisions you make
-1. Instruction on how to run your code
-
-You should use git and make small commits with meaningful commit messages as you implement your solution.
-
-# Setup
-
-Follow the instruction at [smartcloud](https://hub.docker.com/r/smartpayco/smartcloud) to run the Docker container on your machine.
-
-Clone or download this project onto your machine and run
-
-```
-$ sbt run
-```
-
-The API should be running on your port 8080.
-
-# How to submit
-
-Please push your code to a public repository and submit the link via email. Please do not fork this repository.
+### Design
+* One of smarcloud api calls returns 422 error, this api returns 422 error instead of returning prices partially. I choose this way because this way is simpler for callee of this API. 
+* Set retry policy for http client without waiting 
+* Use `ApplicativeError` instead `Either`. This is because of keeping original type. 
+* Set `errorHandle` in the `routes` instead of `getPrices` and `getInstanceKinds` because we may forget to set `errorHandle` in the new route method if we add a new endpoint. 
+* I did `case ex : PriceService.Exception` in the `errorHandle` because we can get exhaustive type checking benefit by `sealed trait`.
